@@ -128,7 +128,7 @@ void print()
 }
 int main()
 {
-	freopen("a.data","r",stdin);
+	//freopen("a.data","r",stdin);
 	int tp=0;
 	while (scanf("%s",ch+1)!=EOF)
 	{
