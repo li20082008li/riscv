@@ -1,2 +1,2 @@
-riscv: 
-	g++ -o  riscv riscv.cpp -O2
+code: 
+	g++ -o  code riscv.cpp -O2
