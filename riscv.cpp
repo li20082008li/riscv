@@ -11,14 +11,13 @@
 #define ull unsigned long long
 #define uint unsigned int
 using namespace std;
-int i,j,k,m,n,s,t;
+uint i,j,k,m,n,s,t;
 uint a[40],pc,opc,fc3,fc7;
-uint mem[401000];
-char ch[101000];          //////shuzudaxiao!!!!!
+char ch[101000];        
 uint now;
 uint c[1001000];
 struct dat{
-	uint rd,rs1,rs2,rd_d,rs1_d,rs2_d,I_im,S_im,B_im,U_im,J_im;
+	uint rd,rs1,rs2,rs1_d,rs2_d,I_im,S_im,B_im,U_im,J_im;
 }p;
 uint zh(char c)
 {
@@ -33,15 +32,14 @@ uint getbit(uint now,uint l,uint r)
 }
 void pre(uint now)
 {
-	opc=getbit(now,0,6);
-	fc3=getbit(now,12,14);
-	fc7=getbit(now,25,31);
+	opc=now&0x7f;
+	fc3=(now>>12)&0x7;
+	fc7=(now>>25)&0x7f;
     p.rd=(now>>7)&0x1f;
     p.rs1=(now>>15)&0x1f;
     p.rs2=(now>>20)&0x1f;
-    p.rd_d=a[p.rd];
-    p.rs1_d=a[p.rs1];
-    p.rs2_d=a[p.rs2];
+    p.rs1_d=a[(now>>15)&0x1f];
+    p.rs2_d=a[(now>>20)&0x1f];
     p.I_im=((now>>20)&0x7ff)|(((int)now<0)?0xfffff800:0);
     p.S_im=((now>>20)&0x7e0)|((now>>7)&0x1f)|(((int)now<0)?0xfffff800:0);
     p.B_im=((now>>20)&0x7e0)|((now>>7)&0x1e)|((now<<4)&0x800)|(((int)now<0)?0xfffff000:0);
@@ -59,30 +57,30 @@ void branches()
     case 0b111:if ((uint)p.rs1_d>=(uint)p.rs2_d) pc+=p.B_im-4;break;
     }	
 }
-void cal()                              /////1:0x3f??  2:sltiu??int???
+void cal()                            
 {
-    if (fc3==0b000) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d+(uint)p.rs2_d;        //op_ADD
-    if (fc3==0b000) if (fc7==0b0100000) a[p.rd]=(uint)p.rs1_d-(uint)p.rs2_d;        //op_SUB
-    if (fc3==0b001) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<<(uint)(p.rs2_d&0x1f); //op_SLL
-	if (fc3==0b010) if (fc7==0b0000000) a[p.rd]=(int)p.rs1_d<(int)p.rs2_d;        //op_SLT
-	if (fc3==0b011) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<(uint)p.rs2_d;        //op_SLTU
-	if (fc3==0b100) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d^(uint)p.rs2_d;        //op_XOR
-	if (fc3==0b101) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d>>(uint)(p.rs2_d&0x1f); //op_SRL
-	if (fc3==0b101) if (fc7==0b0100000) a[p.rd]=(int)p.rs1_d>>(uint)(p.rs2_d&0x1f); //op_SRA
-	if (fc3==0b110) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d|(uint)p.rs2_d;        //op_OR
-	if (fc3==0b111) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d&(uint)p.rs2_d;        //op_AND
+    if (fc3==0b000) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d+(uint)p.rs2_d;       
+    if (fc3==0b000) if (fc7==0b0100000) a[p.rd]=(uint)p.rs1_d-(uint)p.rs2_d;        
+    if (fc3==0b001) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<<(uint)(p.rs2_d&0x1f); 
+	if (fc3==0b010) if (fc7==0b0000000) a[p.rd]=(int)p.rs1_d<(int)p.rs2_d;        
+	if (fc3==0b011) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<(uint)p.rs2_d;        
+	if (fc3==0b100) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d^(uint)p.rs2_d;        
+	if (fc3==0b101) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d>>(uint)(p.rs2_d&0x1f);
+	if (fc3==0b101) if (fc7==0b0100000) a[p.rd]=(int)p.rs1_d>>(uint)(p.rs2_d&0x1f); 
+	if (fc3==0b110) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d|(uint)p.rs2_d;        
+	if (fc3==0b111) if (fc7==0b0000000) a[p.rd]=(uint)p.rs1_d&(uint)p.rs2_d;       
 }
 void cali()
 {
-    if(fc3==0b000) a[p.rd]=(uint)p.rs1_d+(uint)p.I_im;                                           //op_ADDI
-    if(fc3==0b010) a[p.rd]=(int)p.rs1_d<(int)p.I_im;                                           //op_SLTI
-    if(fc3==0b011) a[p.rd]=(uint)p.rs1_d<(uint)p.I_im;                                           //op_SLTIU
-    if(fc3==0b100) a[p.rd]=(uint)p.rs1_d^(uint)p.I_im;                                           //op_XORI
-    if(fc3==0b110) a[p.rd]=(uint)p.rs1_d|(uint)p.I_im;                                           //op_ORI
-    if(fc3==0b111) a[p.rd]=(uint)p.rs1_d&(uint)p.I_im;                                           //op_ANDI
-    if(fc3==0b001) if(fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<<(uint)(p.I_im&0x1f); //op_SLLI
-    if(fc3==0b101) if(fc7==0b0000000) a[p.rd]=(uint)p.rs1_d>>(uint)(p.I_im&0x1f); //op_SRLI
-    if(fc3==0b101) if(fc7==0b0100000) a[p.rd]=(int)p.rs1_d>>(uint)(p.I_im&0x1f); //op_SRAI
+    if(fc3==0b000) a[p.rd]=(uint)p.rs1_d+(uint)p.I_im;                                          
+    if(fc3==0b010) a[p.rd]=(int)p.rs1_d<(int)p.I_im;                                          
+    if(fc3==0b011) a[p.rd]=(uint)p.rs1_d<(uint)p.I_im;                                           
+    if(fc3==0b100) a[p.rd]=(uint)p.rs1_d^(uint)p.I_im;                                           
+    if(fc3==0b110) a[p.rd]=(uint)p.rs1_d|(uint)p.I_im;                                           
+    if(fc3==0b111) a[p.rd]=(uint)p.rs1_d&(uint)p.I_im;                                         
+    if(fc3==0b001) if(fc7==0b0000000) a[p.rd]=(uint)p.rs1_d<<(uint)(p.I_im&0x1f); 
+    if(fc3==0b101) if(fc7==0b0000000) a[p.rd]=(uint)p.rs1_d>>(uint)(p.I_im&0x1f); 
+    if(fc3==0b101) if(fc7==0b0100000) a[p.rd]=(int)p.rs1_d>>(uint)(p.I_im&0x1f); 
 }
 void lui()
 {
@@ -105,33 +103,32 @@ void jalr()
 void load()
 {
     switch(fc3){
-    case 0b000:a[p.rd]=(mem[p.rs1_d+p.I_im]&0xff)|((mem[p.rs1_d+p.I_im]&0x80)?~0xff:0);break;
-    case 0b001:a[p.rd]=(mem[p.rs1_d+p.I_im]&0xffff)|((mem[p.rs1_d+p.I_im]&0x8000)?~0xffff:0);break;
-    case 0b010:a[p.rd]=mem[p.rs1_d+p.I_im];break;
-    case 0b100:a[p.rd]=(mem[p.rs1_d+p.I_im]&0xff);break;
-    case 0b101:a[p.rd]=(mem[p.rs1_d+p.I_im]&0xffff);break;
+    case 0b000:a[p.rd]=(c[p.rs1_d+p.I_im]&0xff)|((c[p.rs1_d+p.I_im]&0x80)?~0xff:0);break;
+    case 0b001:a[p.rd]=(c[p.rs1_d+p.I_im]&0xffff)|((c[p.rs1_d+p.I_im]&0x8000)?~0xffff:0);break;
+    case 0b010:a[p.rd]=c[p.rs1_d+p.I_im];break;
+    case 0b100:a[p.rd]=(c[p.rs1_d+p.I_im]&0xff);break;
+    case 0b101:a[p.rd]=(c[p.rs1_d+p.I_im]&0xffff);break;
     }
-    //cout<<p.rs1_d+p.I_im<<endl;  ////
 }
 void store()
 {
     switch(fc3){
-    case 0b000:mem[p.rs1_d+p.S_im]=(p.rs2_d&0xff);break;
-    case 0b001:mem[p.rs1_d+p.S_im]=(p.rs2_d&0xffff);break;
-    case 0b010:mem[p.rs1_d+p.S_im]=p.rs2_d;break;
+    case 0b000:c[p.rs1_d+p.S_im]=(p.rs2_d&0xff);break;
+    case 0b001:c[p.rs1_d+p.S_im]=(p.rs2_d&0xffff);break;
+    case 0b010:c[p.rs1_d+p.S_im]=p.rs2_d;break;
     }
-    //cout<<p.rs1_d+p.S_im<<" "<<mem[p.rs1_d+p.S_im]<<endl; /////
 }
 void print()
 {
-	printf("rd %u pc %u\n",p.rd,pc);
+	printf("%u\n",now);
+	printf("rs1 %u rs2 %u pc %u\n",p.rs1,p.rs2,pc-4);
 	for (int i=0;i<=31;i++)
 	  printf("%u ",a[i]);
 	puts("");
 }
 int main()
 {
-	//freopen("a.data","r",stdin);
+	freopen("a.data","r",stdin);
 	int tp=0;
 	while (scanf("%s",ch+1)!=EOF)
 	{
@@ -146,16 +143,17 @@ int main()
 		c[tp]=zh(ch[1])*16+zh(ch[2]);
 		tp++;
 	}
+	int tmp=0;
 	while (1)
 	{
+		tmp++;
 		now=0;
 		for (int i=1;i<=4;i++)
 		    now=now*256+c[pc+4-i];		
 		pc+=4;
 		if (now==0xc68223) {cout<<((uint)a[10]&255u);return 0;}
-		//cout<<((uint)a[10]&255u)<<endl;
-		//printf("%lld\n",now);
 		pre(now);
+		a[0]=0;
 		switch(opc)
 		{
 			case 0b1100011:branches();break;
@@ -168,7 +166,7 @@ int main()
             case 0b0000011:load();break;
             case 0b0100011:store();break;
 		}
-		//print();
 		a[0]=0;
+		//print();
 	}
 }
