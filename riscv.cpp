@@ -102,20 +102,21 @@ void jalr()
 }
 void load()
 {
+	uint s;
     switch(fc3){
     case 0b000:a[p.rd]=(c[p.rs1_d+p.I_im]&0xff)|((c[p.rs1_d+p.I_im]&0x80)?~0xff:0);break;
-    case 0b001:a[p.rd]=(c[p.rs1_d+p.I_im]&0xffff)|((c[p.rs1_d+p.I_im]&0x8000)?~0xffff:0);break;
-    case 0b010:a[p.rd]=c[p.rs1_d+p.I_im];break;
-    case 0b100:a[p.rd]=(c[p.rs1_d+p.I_im]&0xff);break;
-    case 0b101:a[p.rd]=(c[p.rs1_d+p.I_im]&0xffff);break;
+    case 0b001:s=c[p.rs1_d+p.I_im]+c[p.rs1_d+p.I_im+1]*0x100;a[p.rd]=(s&0xffff)|((s&0x8000)?~0xffff:0);break;
+    case 0b010:a[p.rd]=c[p.rs1_d+p.I_im]+c[p.rs1_d+p.I_im+1]*0x100+c[p.rs1_d+p.I_im+2]*0x10000+c[p.rs1_d+p.I_im+3]*0x1000000;break;
+    case 0b100:a[p.rd]=c[p.rs1_d+p.I_im];break;
+    case 0b101:a[p.rd]=c[p.rs1_d+p.I_im]+c[p.rs1_d+p.I_im+1]*0x100;break;
     }
 }
 void store()
 {
     switch(fc3){
     case 0b000:c[p.rs1_d+p.S_im]=(p.rs2_d&0xff);break;
-    case 0b001:c[p.rs1_d+p.S_im]=(p.rs2_d&0xffff);break;
-    case 0b010:c[p.rs1_d+p.S_im]=p.rs2_d;break;
+    case 0b001:c[p.rs1_d+p.S_im]=(p.rs2_d&0xff);c[p.rs1_d+p.S_im+1]=(p.rs2_d&0xff00)>>8;break;
+    case 0b010:c[p.rs1_d+p.S_im]=(p.rs2_d&0xff);c[p.rs1_d+p.S_im+1]=(p.rs2_d&0xff00)>>8;c[p.rs1_d+p.S_im+2]=(p.rs2_d&0xff0000)>>16;c[p.rs1_d+p.S_im+3]=(p.rs2_d&0xff000000)>>24;break;
     }
 }
 void print()
@@ -128,7 +129,6 @@ void print()
 }
 int main()
 {
-	//freopen("a.data","r",stdin);
 	int tp=0;
 	while (scanf("%s",ch+1)!=EOF)
 	{
@@ -153,7 +153,6 @@ int main()
 		pc+=4;
 		if (now==0xc68223) {cout<<((uint)a[10]&255u);return 0;}
 		pre(now);
-		a[0]=0;
 		switch(opc)
 		{
 			case 0b1100011:branches();break;
