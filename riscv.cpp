@@ -16,6 +16,7 @@ uint a[40],pc;
 char ch[101000];        
 uint c[1001000];
 int bo1,bo2[10];
+int jsq;
 struct dat{
 	uint rd,rs1,rs2,rs1_d,rs2_d,I_im,S_im,B_im,U_im,J_im,opc,fc3,fc7;
     void pre(uint now)
@@ -148,11 +149,15 @@ void store()
 }
 void print()
 {
-	printf("%u\n",IFID.IR);
+	jsq++;
+    if (jsq>=38110&&jsq<=38120)
+	{
+	printf("%u\n",MEMWB.IR);
 	//printf("rs1 %u rs2 %u pc %u\n",p.rs1,p.rs2,pc-4);
 	for (int i=0;i<=31;i++)
 	  printf("%u ",a[i]);
 	puts("");
+}
 }
 bool ck(uint now)
 {
@@ -190,9 +195,8 @@ void ID()
     if (IFID.IR==0xc68223) {bo2[1]=1;return;}
     if (IFID.IR==0) return;
 	IDEX.p.pre(IDEX.IR);
-    IDEX.A=a[IDEX.p.rs1];
+    /*IDEX.A=a[IDEX.p.rs1];
     IDEX.B=a[IDEX.p.rs2];
-    IDEX.NPC=IFID.NPC;
     if (EXMEM.IR&&(EXMEM.p.rd==IDEX.p.rs1||EXMEM.p.rd==IDEX.p.rs2))
     {
     	if (ck2(EXMEM.p.opc))
@@ -223,7 +227,46 @@ void ID()
     		else if (MEMWB.p.rd==IDEX.p.rs2)
     		  IDEX.B=MEMWB.LMD;
     	}
-    }
+    }*/
+    if (EXMEM.IR&&(ck2(EXMEM.p.opc)||EXMEM.p.opc==0b0000011)&&EXMEM.p.rd==IDEX.p.rs1)
+    {
+    	if (ck2(EXMEM.p.opc))
+    	  IDEX.A=EXMEM.ALU;
+    	else if (EXMEM.p.opc==0b0000011)
+    	{
+    		IDEX.IR=0;
+    		bo1=1;
+    		return;
+    	}
+    } 
+    else if (MEMWB.IR&&(ck2(MEMWB.p.opc)||MEMWB.p.opc==0b0000011)&&MEMWB.p.rd==IDEX.p.rs1)
+    {
+    	if (ck2(MEMWB.p.opc))
+    	  IDEX.A=MEMWB.ALU;
+    	else if (MEMWB.p.opc==0b0000011)
+    	  IDEX.A=MEMWB.LMD;
+    } else
+      IDEX.A=a[IDEX.p.rs1];
+    if (EXMEM.IR&&(ck2(EXMEM.p.opc)||EXMEM.p.opc==0b0000011)&&EXMEM.p.rd==IDEX.p.rs2)
+    {
+    	if (ck2(EXMEM.p.opc))
+    	  IDEX.B=EXMEM.ALU;
+    	else if (EXMEM.p.opc==0b0000011)
+    	{
+    		IDEX.IR=0;
+    		bo1=1;
+    		return;
+    	}
+    } 
+    else if (MEMWB.IR&&(ck2(MEMWB.p.opc)||MEMWB.p.opc==0b0000011)&&MEMWB.p.rd==IDEX.p.rs2)
+    {
+    	if (ck2(MEMWB.p.opc))
+    	  IDEX.B=MEMWB.ALU;
+    	else if (MEMWB.p.opc==0b0000011)
+    	  IDEX.B=MEMWB.LMD;
+    } else
+      IDEX.B=a[IDEX.p.rs2];
+    IDEX.NPC=IFID.NPC;
     IFID.IR=0;
 }
 void EX()
@@ -285,12 +328,14 @@ void WB()
       a[MEMWB.p.rd]=MEMWB.LMD;
     if (MEMWB.p.opc==0b1101111||MEMWB.p.opc==0b1100111)
       a[MEMWB.p.rd]=MEMWB.NPC;
-    MEMWB.IR=0;
 	a[0]=0;
+	//print();
+    MEMWB.IR=0;
 }
 int main()
 {
 	//freopen("a.data","r",stdin);
+	//freopen("1.out","w",stdout);
 	int tp=0;
 	while (scanf("%s",ch+1)!=EOF)
 	{
