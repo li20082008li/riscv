@@ -18,7 +18,7 @@ uint c[1001000];
 int bo1,bo2[10];
 int jsq;
 struct dat{
-	uint rd,rs1,rs2,rs1_d,rs2_d,I_im,S_im,B_im,U_im,J_im,opc,fc3,fc7;
+	uint rd,rs1,rs2,I_im,S_im,B_im,U_im,J_im,opc,fc3,fc7;
     void pre(uint now)
 	{
 	  opc=now&0x7f;
@@ -27,8 +27,6 @@ struct dat{
       rd=(now>>7)&0x1f;
       rs1=(now>>15)&0x1f;
       rs2=(now>>20)&0x1f;
-      rs1_d=a[(now>>15)&0x1f];
-      rs2_d=a[(now>>20)&0x1f];
       I_im=((now>>20)&0x7ff)|(((int)now<0)?0xfffff800:0);
       S_im=((now>>20)&0x7e0)|((now>>7)&0x1f)|(((int)now<0)?0xfffff800:0);
       B_im=((now>>20)&0x7e0)|((now>>7)&0x1e)|((now<<4)&0x800)|(((int)now<0)?0xfffff000:0);
@@ -38,7 +36,6 @@ struct dat{
 };
 struct IFID{
 	uint IR,NPC;
-	dat p;
 }IFID;
 struct IDEX{
 	uint IR,NPC,A,B,IMM;
@@ -181,11 +178,12 @@ void IF()
     if (IFID.IR==0xc68223) {bo2[0]=1;return;}
     if (EXMEM.IR&&ck(EXMEM.p.opc)&&EXMEM.cond)
     {
-    	pc=IFID.NPC=EXMEM.ALU;
+    	pc=EXMEM.ALU;
     	IFID.IR=0;
     	IDEX.IR=0;
     } else
-    	pc=IFID.NPC=pc+4;
+    	pc+=4;
+    IFID.NPC=pc;
 }
 void ID()
 {
@@ -195,78 +193,35 @@ void ID()
     if (IFID.IR==0xc68223) {bo2[1]=1;return;}
     if (IFID.IR==0) return;
 	IDEX.p.pre(IDEX.IR);
-    /*IDEX.A=a[IDEX.p.rs1];
-    IDEX.B=a[IDEX.p.rs2];
-    if (EXMEM.IR&&(EXMEM.p.rd==IDEX.p.rs1||EXMEM.p.rd==IDEX.p.rs2))
-    {
-    	if (ck2(EXMEM.p.opc))
-    	{
-    		if (EXMEM.p.rd==IDEX.p.rs1)
-    		  IDEX.A=EXMEM.ALU;
-    		else if (EXMEM.p.rd==IDEX.p.rs2)
-    		  IDEX.B=EXMEM.ALU;
-    	} else if (EXMEM.p.opc==0b0000011)
-    	{
-    		IDEX.IR=0;
-    		bo1=1;
-    		return;
-    	}
-    }
-    else if (MEMWB.IR&&(MEMWB.p.rd==IDEX.p.rs1||MEMWB.p.rd==IDEX.p.rs2))
-    {
-    	if (ck2(MEMWB.p.opc))
-    	{
-    		if (MEMWB.p.rd==IDEX.p.rs1)
-    		  IDEX.A=MEMWB.ALU;
-    		else if (MEMWB.p.rd==IDEX.p.rs2)
-    		  IDEX.B=MEMWB.ALU;
-    	} else if (MEMWB.p.opc==0b0000011)
-    	{
-    		if (MEMWB.p.rd==IDEX.p.rs1)
-    		  IDEX.A=MEMWB.LMD;
-    		else if (MEMWB.p.rd==IDEX.p.rs2)
-    		  IDEX.B=MEMWB.LMD;
-    	}
-    }*/
-    if (EXMEM.IR&&(ck2(EXMEM.p.opc)||EXMEM.p.opc==0b0000011)&&EXMEM.p.rd==IDEX.p.rs1)
-    {
-    	if (ck2(EXMEM.p.opc))
-    	  IDEX.A=EXMEM.ALU;
-    	else if (EXMEM.p.opc==0b0000011)
-    	{
-    		IDEX.IR=0;
-    		bo1=1;
-    		return;
-    	}
-    } 
-    else if (MEMWB.IR&&(ck2(MEMWB.p.opc)||MEMWB.p.opc==0b0000011)&&MEMWB.p.rd==IDEX.p.rs1)
-    {
-    	if (ck2(MEMWB.p.opc))
-    	  IDEX.A=MEMWB.ALU;
-    	else if (MEMWB.p.opc==0b0000011)
-    	  IDEX.A=MEMWB.LMD;
-    } else
-      IDEX.A=a[IDEX.p.rs1];
-    if (EXMEM.IR&&(ck2(EXMEM.p.opc)||EXMEM.p.opc==0b0000011)&&EXMEM.p.rd==IDEX.p.rs2)
-    {
-    	if (ck2(EXMEM.p.opc))
-    	  IDEX.B=EXMEM.ALU;
-    	else if (EXMEM.p.opc==0b0000011)
-    	{
-    		IDEX.IR=0;
-    		bo1=1;
-    		return;
-    	}
-    } 
-    else if (MEMWB.IR&&(ck2(MEMWB.p.opc)||MEMWB.p.opc==0b0000011)&&MEMWB.p.rd==IDEX.p.rs2)
-    {
-    	if (ck2(MEMWB.p.opc))
-    	  IDEX.B=MEMWB.ALU;
-    	else if (MEMWB.p.opc==0b0000011)
-    	  IDEX.B=MEMWB.LMD;
-    } else
-      IDEX.B=a[IDEX.p.rs2];
     IDEX.NPC=IFID.NPC;
+    if (EXMEM.IR&&ck2(EXMEM.p.opc)&&EXMEM.p.rd==IDEX.p.rs1)
+      IDEX.A=EXMEM.ALU;
+    else if (EXMEM.IR&&EXMEM.p.opc==0b0000011&&EXMEM.p.rd==IDEX.p.rs1)
+    {
+    	IDEX.IR=0;
+    	bo1=1;
+    	return;
+    } 
+    else if (MEMWB.IR&&ck2(MEMWB.p.opc)&&MEMWB.p.rd==IDEX.p.rs1)
+      IDEX.A=MEMWB.ALU;
+    else if (MEMWB.IR&&MEMWB.p.opc==0b0000011&&MEMWB.p.rd==IDEX.p.rs1)
+      IDEX.A=MEMWB.LMD;
+    else
+      IDEX.A=a[IDEX.p.rs1];      
+    if (EXMEM.IR&&ck2(EXMEM.p.opc)&&EXMEM.p.rd==IDEX.p.rs2)
+      IDEX.B=EXMEM.ALU;
+    else if (EXMEM.IR&&EXMEM.p.opc==0b0000011&&EXMEM.p.rd==IDEX.p.rs2)
+    {
+    	IDEX.IR=0;
+    	bo1=1;
+    	return;
+    } 
+    else if (MEMWB.IR&&ck2(MEMWB.p.opc)&&MEMWB.p.rd==IDEX.p.rs2)
+      IDEX.B=MEMWB.ALU;
+    else if (MEMWB.IR&&MEMWB.p.opc==0b0000011&&MEMWB.p.rd==IDEX.p.rs2)
+      IDEX.B=MEMWB.LMD;
+    else
+      IDEX.B=a[IDEX.p.rs2];  
     IFID.IR=0;
 }
 void EX()
@@ -299,9 +254,7 @@ void MEM()
 	MEMWB.p=EXMEM.p;
     if (EXMEM.IR==0xc68223) {bo2[3]=1;return;}
     if (EXMEM.IR==0) return;
-    if (ck2(EXMEM.p.opc))
-      MEMWB.ALU=EXMEM.ALU; 
-	else if (EXMEM.p.opc==0b0000011||EXMEM.p.opc==0b0100011)
+	if (EXMEM.p.opc==0b0000011||EXMEM.p.opc==0b0100011)
 	{
 		EXMEM.cnt--;
 		if (EXMEM.cnt!=0)
@@ -314,6 +267,7 @@ void MEM()
     	if (EXMEM.p.opc==0b0000011) load();
     	if (EXMEM.p.opc==0b0100011) store();
     }
+    MEMWB.ALU=EXMEM.ALU; 
     MEMWB.NPC=EXMEM.NPC;
     EXMEM.IR=0;
 }
@@ -353,8 +307,7 @@ int main()
 	while (1)
 	{
 		bo1=0;
-		WB();
-		if (MEMWB.IR==0xc68223) {cout<<((uint)a[10]&255u);return 0;}
+		WB(); if (MEMWB.IR==0xc68223) {cout<<((uint)a[10]&255u);return 0;}
 		MEM();
 		EX();
 		ID();
