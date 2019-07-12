@@ -7,8 +7,6 @@
 #include<ctime>
 #include<queue>
 #include<map>
-#define ll long long
-#define ull unsigned long long
 #define uint unsigned int
 using namespace std;
 uint i,j,k,m,n,s,t;
@@ -16,7 +14,6 @@ uint a[40],pc;
 char ch[101000];        
 uint c[1001000],b[101000];
 int bo1,bo2[10];
-int jsq;
 struct dat{
 	uint rd,rs1,rs2,I_im,S_im,B_im,U_im,J_im,opc,fc3,fc7;
     void pre(uint now)
@@ -38,11 +35,11 @@ struct IFID{
 	uint IR,NPC;
 }IFID;
 struct IDEX{
-	uint IR,NPC,A,B,IMM,JP;
+	uint IR,NPC,A,B,IMM,JP,PR;
 	dat p;
 }IDEX;
 struct EXMEM{
-	uint IR,NPC,B,cond,ALU,cnt;
+	uint IR,NPC,B,cond,ALU,cnt,PR;
 	dat p;
 }EXMEM;
 struct MEMWB{
@@ -137,7 +134,6 @@ void load()
     case 0b100:MEMWB.LMD=c[EXMEM.ALU];break;
     case 0b101:MEMWB.LMD=c[EXMEM.ALU]+c[EXMEM.ALU+1]*0x100;break;
     }
-    //cout<<MEMWB.LMD<<" ! "<<EXMEM.ALU<<endl;
 }
 void store()
 {
@@ -147,22 +143,6 @@ void store()
     case 0b001:c[EXMEM.ALU]=(EXMEM.B&0xff);c[EXMEM.ALU+1]=(EXMEM.B&0xff00)>>8;break;
     case 0b010:c[EXMEM.ALU]=(EXMEM.B&0xff);c[EXMEM.ALU+1]=(EXMEM.B&0xff00)>>8;c[EXMEM.ALU+2]=(EXMEM.B&0xff0000)>>16;c[EXMEM.ALU+3]=(EXMEM.B&0xff000000)>>24;break;
     }
-    if (EXMEM.ALU==91024&&EXMEM.B==4260) printf("%d\n",jsq);
-    //cout<<EXMEM.ALU<<" ? "<<EXMEM.B<<endl;
-}
-void print()
-{
-	jsq++;
-    if (jsq<=30)
-	{
-		if (MEMWB.IR==163943) 
-		  printf("%d\n",jsq); //
-	printf("%u %u\n",MEMWB.IR,MEMWB.NPC-4);
-	//printf("rs1 %u rs2 %u pc %u\n",p.rs1,p.rs2,pc-4);
-	for (int i=0;i<=31;i++)
-	  printf("%u ",a[i]);
-	puts("");
-} else exit(0);
 }
 bool ck(uint now)
 {
@@ -206,16 +186,15 @@ void update(uint pc,int s)
 void IF()
 {
     if (bo1) return;
-	if (bo2[0]) return;
+	if (bo2[3]) return;
 	if (EXMEM.cnt!=0) return;
-    if (IDEX.IR&&((IDEX.p.opc==0b1100011&&predict(IDEX.NPC-4))||IDEX.p.opc==0b1101111||IDEX.p.opc==0b1100111))
+    if (IDEX.IR&&((IDEX.p.opc==0b1100011&&IDEX.PR)||IDEX.p.opc==0b1101111||IDEX.p.opc==0b1100111))
 		pc=IDEX.JP;	
 	uint now=0;
 	for (int i=1;i<=4;i++)
 		now=now*256+c[pc+4-i];		
 	IFID.IR=now;
-    if (IFID.IR==0xc68223) {bo2[0]=1;return;}
-	if (EXMEM.IR&&EXMEM.p.opc==0b1100011&&EXMEM.cond!=predict(EXMEM.NPC-4))
+	if (EXMEM.IR&&EXMEM.p.opc==0b1100011&&EXMEM.cond!=EXMEM.PR)
 	{
 		if (EXMEM.cond==1)
 		  pc=EXMEM.ALU;
@@ -232,10 +211,9 @@ void IF()
 }
 void ID()
 {
-	if (bo2[1]) return;
+	if (bo2[3]) return;
 	if (EXMEM.cnt!=0) return;
 	IDEX.IR=IFID.IR;
-    if (IFID.IR==0xc68223) {bo2[1]=1;return;}
     if (IFID.IR==0) return;
 	IDEX.p.pre(IDEX.IR);
     IDEX.NPC=IFID.NPC;
@@ -283,7 +261,11 @@ void ID()
       IDEX.JP=IDEX.p.J_im+IDEX.NPC-4;
     else if (IDEX.p.opc==0b1100111)
 	  IDEX.JP=IDEX.A+IDEX.p.I_im;
-	else IDEX.JP=IDEX.p.B_im+IDEX.NPC-4;
+	else if (IDEX.p.opc==0b1100011)
+	{
+	  IDEX.JP=IDEX.p.B_im+IDEX.NPC-4;
+	  IDEX.PR=predict(IDEX.NPC-4);
+    }
     IFID.IR=0;
 }
 void EX()
@@ -307,6 +289,7 @@ void EX()
         case 0b0100011:store1();break;
 	}
 	EXMEM.NPC=IDEX.NPC;
+	EXMEM.PR=IDEX.PR;
 	IDEX.IR=0;
 }
 void MEM()
@@ -345,13 +328,11 @@ void WB()
     if (MEMWB.p.opc==0b1101111||MEMWB.p.opc==0b1100111)
       a[MEMWB.p.rd]=MEMWB.NPC;
 	a[0]=0;
-	//print();
     MEMWB.IR=0;
 }
 int main()
 {
 	//freopen("a.data","r",stdin);
-	//freopen("1.out","w",stdout);
 	int tp=0;
 	while (scanf("%s",ch+1)!=EOF)
 	{
