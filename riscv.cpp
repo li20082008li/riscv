@@ -14,7 +14,7 @@ using namespace std;
 uint i,j,k,m,n,s,t;
 uint a[40],pc;
 char ch[101000];        
-uint c[1001000];
+uint c[1001000],b[101000];
 int bo1,bo2[10];
 int jsq;
 struct dat{
@@ -38,7 +38,7 @@ struct IFID{
 	uint IR,NPC;
 }IFID;
 struct IDEX{
-	uint IR,NPC,A,B,IMM;
+	uint IR,NPC,A,B,IMM,JP;
 	dat p;
 }IDEX;
 struct EXMEM{
@@ -59,7 +59,8 @@ void branches()
 	dat p=IDEX.p;
 	uint fc3=p.fc3,fc7=p.fc7;
 	EXMEM.ALU=IDEX.p.B_im+IDEX.NPC-4;
-    switch(fc3){
+    switch(fc3)
+	{
     case 0b000:if ((uint)IDEX.A==(uint)IDEX.B) EXMEM.cond=1; else EXMEM.cond=0;break;
     case 0b001:if ((uint)IDEX.A!=(uint)IDEX.B) EXMEM.cond=1; else EXMEM.cond=0;break;
     case 0b100:if ((int)IDEX.A<(int)IDEX.B) EXMEM.cond=1; else EXMEM.cond=0;break;
@@ -128,7 +129,8 @@ void store1()
 void load()
 {
 	uint s;
-    switch(EXMEM.p.fc3){
+    switch(EXMEM.p.fc3)
+	{
     case 0b000:MEMWB.LMD=(c[EXMEM.ALU]&0xff)|((c[EXMEM.ALU]&0x80)?~0xff:0);break;
     case 0b001:s=c[EXMEM.ALU]+c[EXMEM.ALU+1]*0x100;MEMWB.LMD=(s&0xffff)|((s&0x8000)?~0xffff:0);break;
     case 0b010:MEMWB.LMD=c[EXMEM.ALU]+c[EXMEM.ALU+1]*0x100+c[EXMEM.ALU+2]*0x10000+c[EXMEM.ALU+3]*0x1000000;break;
@@ -138,7 +140,8 @@ void load()
 }
 void store()
 {
-    switch(EXMEM.p.fc3){
+    switch(EXMEM.p.fc3)
+	{
     case 0b000:c[EXMEM.ALU]=(EXMEM.B&0xff);break;
     case 0b001:c[EXMEM.ALU]=(EXMEM.B&0xff);c[EXMEM.ALU+1]=(EXMEM.B&0xff00)>>8;break;
     case 0b010:c[EXMEM.ALU]=(EXMEM.B&0xff);c[EXMEM.ALU+1]=(EXMEM.B&0xff00)>>8;c[EXMEM.ALU+2]=(EXMEM.B&0xff0000)>>16;c[EXMEM.ALU+3]=(EXMEM.B&0xff000000)>>24;break;
@@ -147,7 +150,7 @@ void store()
 void print()
 {
 	jsq++;
-    if (jsq>=38110&&jsq<=38120)
+    ///if (jsq>=38110&&jsq<=38120)
 	{
 	printf("%u\n",MEMWB.IR);
 	//printf("rs1 %u rs2 %u pc %u\n",p.rs1,p.rs2,pc-4);
@@ -166,6 +169,35 @@ bool ck2(uint now)
 	if (now==0b0110111||now==0b0010111||now==0b0010011||now==0b0110011) return 1;
 	return 0;
 }
+bool predict(uint pc)
+{
+	pc=pc&0xfff;
+	if (b[pc]>=0b10) return 1;
+	else return 0;
+}
+void update(uint pc,int s)
+{
+	pc=pc&0xfff;
+	if (s)
+	{
+		switch (b[pc])
+		{
+			case 0b00:b[pc]=0b01;break;
+			case 0b01:b[pc]=0b11;break;
+			case 0b10:b[pc]=0b11;break;
+			case 0b11:b[pc]=0b11;break;
+		}
+	} else
+	{
+		switch (b[pc])
+		{
+			case 0b00:b[pc]=0b00;break;
+			case 0b01:b[pc]=0b00;break;
+			case 0b10:b[pc]=0b00;break;
+			case 0b11:b[pc]=0b10;break;
+		}
+	}
+}
 void IF()
 {
 	if (bo1) return;
@@ -176,14 +208,24 @@ void IF()
 		now=now*256+c[pc+4-i];		
 	IFID.IR=now;
     if (IFID.IR==0xc68223) {bo2[0]=1;return;}
-    if (EXMEM.IR&&ck(EXMEM.p.opc)&&EXMEM.cond)
-    {
-    	pc=EXMEM.ALU;
+    if (EXMEM.IR&&EXMEM.p.opc==0b1100011&&EXMEM.cond!=predict(EXMEM.NPC-4))
+	{
+		if (EXMEM.cond==1)
+		  pc=EXMEM.ALU;
+		else
+		  pc=EXMEM.NPC;
     	IFID.IR=0;
-    	IDEX.IR=0;
+    	IDEX.IR=0;		
+	} 
+	else if (IDEX.IR&&(IDEX.p.opc==0b1101111||IDEX.p.opc==0b1100111||(IDEX.p.opc==0b1100011&&predict(IDEX.NPC-4))))
+	{
+		pc=IDEX.JP;
+		IFID.IR=0;
     } else
-    	pc+=4;
-    IFID.NPC=pc;
+	    pc+=4;
+    if (EXMEM.IR&&EXMEM.p.opc==0b1100011)
+      	update(EXMEM.NPC-4,EXMEM.cond);
+	IFID.NPC=pc;
 }
 void ID()
 {
@@ -222,6 +264,11 @@ void ID()
       IDEX.B=MEMWB.LMD;
     else
       IDEX.B=a[IDEX.p.rs2];  
+    if (IDEX.p.opc==0b1101111)
+      IDEX.JP=IDEX.p.J_im+IDEX.NPC-4;
+    else if (IDEX.p.opc==0b1100111)
+	  IDEX.JP=IDEX.A+IDEX.p.I_im;
+	else IDEX.JP=IDEX.p.B_im+IDEX.NPC-4;
     IFID.IR=0;
 }
 void EX()
@@ -259,9 +306,9 @@ void MEM()
 		EXMEM.cnt--;
 		if (EXMEM.cnt!=0)
 		{
+			MEMWB.IR=0;
 			if ((int)EXMEM.cnt<0)
 			  EXMEM.cnt=2;
-			MEMWB.IR=0;
 			return;
 		}
     	if (EXMEM.p.opc==0b0000011) load();
