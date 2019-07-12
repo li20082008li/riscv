@@ -152,7 +152,9 @@ void print()
 	jsq++;
     ///if (jsq>=38110&&jsq<=38120)
 	{
-	printf("%u\n",MEMWB.IR);
+		if (MEMWB.IR==163943) 
+		  printf("%d\n",jsq); //
+	printf("%u %u\n",MEMWB.IR,pc);
 	//printf("rs1 %u rs2 %u pc %u\n",p.rs1,p.rs2,pc-4);
 	for (int i=0;i<=31;i++)
 	  printf("%u ",a[i]);
@@ -200,15 +202,23 @@ void update(uint pc,int s)
 }
 void IF()
 {
-	if (bo1) return;
+    if (bo1) return;
 	if (bo2[0]) return;
 	if (EXMEM.cnt!=0) return;
+    if (IDEX.IR&&IDEX.p.opc==0b1100011&&predict(IDEX.NPC-4))
+		pc=IDEX.JP;	
 	uint now=0;
 	for (int i=1;i<=4;i++)
 		now=now*256+c[pc+4-i];		
 	IFID.IR=now;
     if (IFID.IR==0xc68223) {bo2[0]=1;return;}
-    if (EXMEM.IR&&EXMEM.p.opc==0b1100011&&EXMEM.cond!=predict(EXMEM.NPC-4))
+    if (EXMEM.IR&&(EXMEM.p.opc==0b1100111||EXMEM.p.opc==0b1101111))
+    {
+    	pc=EXMEM.ALU;
+    	IFID.IR=0;
+    	IDEX.IR=0;		    	
+    } 
+	else if (EXMEM.IR&&EXMEM.p.opc==0b1100011&&EXMEM.cond!=predict(EXMEM.NPC-4))
 	{
 		if (EXMEM.cond==1)
 		  pc=EXMEM.ALU;
@@ -216,12 +226,8 @@ void IF()
 		  pc=EXMEM.NPC;
     	IFID.IR=0;
     	IDEX.IR=0;		
-	} 
-	else if (IDEX.IR&&(IDEX.p.opc==0b1101111||IDEX.p.opc==0b1100111||(IDEX.p.opc==0b1100011&&predict(IDEX.NPC-4))))
-	{
-		pc=IDEX.JP;
-		IFID.IR=0;
-    } else
+	} 	
+	else
 	    pc+=4;
     if (EXMEM.IR&&EXMEM.p.opc==0b1100011)
       	update(EXMEM.NPC-4,EXMEM.cond);
@@ -244,10 +250,14 @@ void ID()
     	bo1=1;
     	return;
     } 
+    else if (EXMEM.IR&&(EXMEM.p.opc==0b110111||EXMEM.p.opc==0b1100111)&&EXMEM.p.rd==IDEX.p.rs1)
+      IDEX.A=EXMEM.NPC;
     else if (MEMWB.IR&&ck2(MEMWB.p.opc)&&MEMWB.p.rd==IDEX.p.rs1)
       IDEX.A=MEMWB.ALU;
     else if (MEMWB.IR&&MEMWB.p.opc==0b0000011&&MEMWB.p.rd==IDEX.p.rs1)
       IDEX.A=MEMWB.LMD;
+    else if (MEMWB.IR&&(MEMWB.p.opc==0b110111||MEMWB.p.opc==0b1100111)&&MEMWB.p.rd==IDEX.p.rs1)
+      IDEX.A=MEMWB.NPC;
     else
       IDEX.A=a[IDEX.p.rs1];      
     if (EXMEM.IR&&ck2(EXMEM.p.opc)&&EXMEM.p.rd==IDEX.p.rs2)
@@ -258,10 +268,14 @@ void ID()
     	bo1=1;
     	return;
     } 
+    else if (EXMEM.IR&&(EXMEM.p.opc==0b110111||EXMEM.p.opc==0b1100111)&&EXMEM.p.rd==IDEX.p.rs2)
+      IDEX.B=EXMEM.NPC;
     else if (MEMWB.IR&&ck2(MEMWB.p.opc)&&MEMWB.p.rd==IDEX.p.rs2)
       IDEX.B=MEMWB.ALU;
     else if (MEMWB.IR&&MEMWB.p.opc==0b0000011&&MEMWB.p.rd==IDEX.p.rs2)
       IDEX.B=MEMWB.LMD;
+    else if (MEMWB.IR&&(MEMWB.p.opc==0b110111||MEMWB.p.opc==0b1100111)&&MEMWB.p.rd==IDEX.p.rs2)
+      IDEX.B=MEMWB.NPC;
     else
       IDEX.B=a[IDEX.p.rs2];  
     if (IDEX.p.opc==0b1101111)
